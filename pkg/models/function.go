@@ -1,5 +1,10 @@
 package models
 
+import (
+	"time"
+)
+
 type Function struct {
-	Name string
+	Name      string
+	CreatedAt time.Time
 }

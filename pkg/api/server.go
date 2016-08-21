@@ -1,6 +1,9 @@
 package api
 
 import (
+	"time"
+
+	"github.com/altipla-consulting/chrono"
 	pb_empty "github.com/golang/protobuf/ptypes/empty"
 	"github.com/juju/errors"
 	"golang.org/x/net/context"
@@ -33,7 +36,8 @@ func (s *Server) ListFunctions(ctx context.Context, in *pb_empty.Empty) (*pb.Lis
 	reply := new(pb.ListFunctionsReply)
 	for _, fn := range functions {
 		reply.Functions = append(reply.Functions, &pb.Function{
-			Name: fn.Name,
+			Name:      fn.Name,
+			CreatedAt: chrono.DateTimeToProto(fn.CreatedAt),
 		})
 	}
 
@@ -42,7 +46,8 @@ func (s *Server) ListFunctions(ctx context.Context, in *pb_empty.Empty) (*pb.Lis
 
 func (s *Server) DeployFunction(ctx context.Context, in *pb.DeployFunctionRequest) (*pb_empty.Empty, error) {
 	fn := &models.Function{
-		Name: in.Function.Name,
+		Name:      in.Function.Name,
+		CreatedAt: time.Now(),
 	}
 	if _, err := r.Table(models.TableFunctions).Insert(fn).RunWrite(s.db); err != nil {
 		return nil, errors.Trace(err)
