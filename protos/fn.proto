@@ -1,0 +1,23 @@
+
+syntax = "proto3";
+
+package fn;
+
+import "google/protobuf/empty.proto";
+
+service Fn {
+  rpc ListFunctions(google.protobuf.Empty) returns (ListFunctionsReply) {}
+  rpc DeployFunction(DeployFunctionRequest) returns (google.protobuf.Empty) {}
+}
+
+message ListFunctionsReply {
+  repeated Function functions = 1;
+}
+
+message Function {
+  string name = 1;
+}
+
+message DeployFunctionRequest {
+  Function function = 1;
+}

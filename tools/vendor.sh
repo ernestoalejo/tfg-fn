@@ -5,6 +5,7 @@ set -eu
 echo "--- Get libs"
 go get -u github.com/Sirupsen/logrus
 go get -u github.com/juju/errors
+go get -u github.com/spf13/cobra
 go get -u gopkg.in/dancannon/gorethink.v2
 
 echo "--- Vendor libs"
