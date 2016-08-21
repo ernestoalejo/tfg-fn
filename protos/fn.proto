@@ -9,6 +9,7 @@ import "google/protobuf/timestamp.proto";
 service Fn {
   rpc ListFunctions(google.protobuf.Empty) returns (ListFunctionsReply) {}
   rpc DeployFunction(DeployFunctionRequest) returns (google.protobuf.Empty) {}
+  rpc DeleteFunction(DeleteFunctionRequest) returns (google.protobuf.Empty) {}
 }
 
 message ListFunctionsReply {
@@ -24,4 +25,8 @@ message Function {
 
 message DeployFunctionRequest {
   Function function = 1;
+}
+
+message DeleteFunctionRequest {
+  string name = 1;
 }

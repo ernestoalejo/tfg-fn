@@ -55,3 +55,11 @@ func (s *Server) DeployFunction(ctx context.Context, in *pb.DeployFunctionReques
 
 	return new(pb_empty.Empty), nil
 }
+
+func (s *Server) DeleteFunction(ctx context.Context, in *pb.DeleteFunctionRequest) (*pb_empty.Empty, error) {
+	if _, err := r.Table(models.TableFunctions).Get(in.Name).Delete().RunWrite(s.db); err != nil {
+		return nil, errors.Trace(err)
+	}
+
+	return new(pb_empty.Empty), nil
+}
