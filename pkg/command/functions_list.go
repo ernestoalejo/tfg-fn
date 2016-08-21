@@ -1,6 +1,7 @@
 package command
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/altipla-consulting/chrono"
@@ -25,11 +26,21 @@ var FunctionsListCmd = &cobra.Command{
 
 		tabPrint([]string{
 			"NAME",
+			"CALL",
+			"TRIGGER",
 			"DEPLOYED",
 		})
 		for _, fn := range reply.Functions {
+			var trigger string
+			switch fn.Trigger {
+			case "http":
+				trigger = fmt.Sprintf("http (method=%s)", fn.Method)
+			}
+
 			tabPrint([]string{
 				fn.Name,
+				fn.Call,
+				trigger,
 				time.Now().Sub(chrono.DateTimeFromProto(fn.CreatedAt)).String(),
 			})
 		}

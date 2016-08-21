@@ -18,9 +18,12 @@ message ListFunctionsReply {
 
 message Function {
   string name = 1;
+  string call = 2;
+  string trigger = 3;
+  string method = 4;
 
   // Output only.
-  google.protobuf.Timestamp created_at = 2;
+  google.protobuf.Timestamp created_at = 5;
 }
 
 message DeployFunctionRequest {

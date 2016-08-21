@@ -37,6 +37,9 @@ func (s *Server) ListFunctions(ctx context.Context, in *pb_empty.Empty) (*pb.Lis
 	for _, fn := range functions {
 		reply.Functions = append(reply.Functions, &pb.Function{
 			Name:      fn.Name,
+			Call:      fn.Call,
+			Trigger:   fn.Trigger,
+			Method:    fn.Method,
 			CreatedAt: chrono.DateTimeToProto(fn.CreatedAt),
 		})
 	}
@@ -47,6 +50,9 @@ func (s *Server) ListFunctions(ctx context.Context, in *pb_empty.Empty) (*pb.Lis
 func (s *Server) DeployFunction(ctx context.Context, in *pb.DeployFunctionRequest) (*pb_empty.Empty, error) {
 	fn := &models.Function{
 		Name:      in.Function.Name,
+		Call:      in.Function.Call,
+		Trigger:   in.Function.Trigger,
+		Method:    in.Function.Method,
 		CreatedAt: time.Now(),
 	}
 	if _, err := r.Table(models.TableFunctions).Insert(fn).RunWrite(s.db); err != nil {

@@ -33,6 +33,9 @@ var FunctionsDeployCmd = &cobra.Command{
 
 		fn := &pb.Function{
 			Name:      app.Function.Name,
+			Call:      app.Function.Call,
+			Trigger:   app.Function.Trigger,
+			Method:    app.Function.Method,
 			CreatedAt: chrono.DateTimeToProto(time.Now()),
 		}
 		if _, err := client.DeployFunction(context.Background(), &pb.DeployFunctionRequest{Function: fn}); err != nil {
