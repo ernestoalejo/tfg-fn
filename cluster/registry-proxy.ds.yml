@@ -1,0 +1,25 @@
+
+kind: DaemonSet
+apiVersion: extensions/v1beta1
+metadata:
+  name: registry-proxy
+spec:
+  template:
+    metadata:
+      labels:
+        app: registry-proxy
+    spec:
+      containers:
+      - name: registry-proxy
+        image: gcr.io/google_containers/kube-registry-proxy:0.3
+        env:
+        - name: REGISTRY_HOST
+          value: registry.default.svc.cluster.local
+        - name: REGISTRY_PORT
+          value: "5000"
+        - name: FORWARD_PORT
+          value: "5000"
+        ports:
+        - name: registry
+          containerPort: 5000
+          hostPort: 5000

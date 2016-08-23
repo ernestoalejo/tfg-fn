@@ -1,6 +1,8 @@
 package api
 
 import (
+	"fmt"
+	"io/ioutil"
 	"time"
 
 	"github.com/altipla-consulting/chrono"
@@ -9,16 +11,23 @@ import (
 	"golang.org/x/net/context"
 	r "gopkg.in/dancannon/gorethink.v2"
 
+	"github.com/ernestoalejo/tfg-fn/pkg/kubernetes"
 	"github.com/ernestoalejo/tfg-fn/pkg/models"
 	pb "github.com/ernestoalejo/tfg-fn/protos"
 )
 
 type Server struct {
-	db *r.Session
+	db    *r.Session
+	token string
 }
 
 func NewServer(db *r.Session) *Server {
-	return &Server{db}
+	token, err := ioutil.ReadFile("/var/run/secrets/kubernetes.io/serviceaccount/token")
+	if err != nil {
+		panic(err)
+	}
+
+	return &Server{db, string(token)}
 }
 
 func (s *Server) ListFunctions(ctx context.Context, in *pb_empty.Empty) (*pb.ListFunctionsReply, error) {
@@ -56,6 +65,44 @@ func (s *Server) DeployFunction(ctx context.Context, in *pb.DeployFunctionReques
 		CreatedAt: time.Now(),
 	}
 	if _, err := r.Table(models.TableFunctions).Insert(fn).RunWrite(s.db); err != nil {
+		return nil, errors.Trace(err)
+	}
+
+	client := kubernetes.NewClient(s.token)
+	deployment := &kubernetes.Deployment{
+		APIVersion: "extensions/v1beta1",
+		Metadata:   &kubernetes.ObjectMeta{Name: "registry"},
+		Spec: &kubernetes.DeploymentSpec{
+			RevisionHistoryLimit: 1,
+			Strategy: &kubernetes.DeploymentStrategy{
+				RollingUpdate: &kubernetes.RollingUpdateDeployment{
+					MaxUnavailable: 0,
+				},
+			},
+			Template: &kubernetes.PodTemplateSpec{
+				Metadata: &kubernetes.ObjectMeta{
+					Labels: map[string]string{
+						"app": fn.Name,
+					},
+				},
+				Spec: &kubernetes.PodSpec{
+					Containers: []*kubernetes.Container{
+						{
+							Name:  fn.Name,
+							Image: fmt.Sprintf("localhost:5000/%s", fn.Name),
+							Ports: []*kubernetes.ContainerPort{
+								{
+									Name:          "http",
+									ContainerPort: 50050,
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+	if err := client.CreateDeployment(deployment); err != nil {
 		return nil, errors.Trace(err)
 	}
 

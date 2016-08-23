@@ -2,12 +2,12 @@
 kind: Service
 apiVersion: v1
 metadata:
-  name: fnapi
+  name: fnapi-debug
 spec:
   selector:
     app: fnapi
   ports:
-  - port: 50050
-    targetPort: 50050
-    name: grpc
+  - port: 8000
+    targetPort: 8000
+    name: http
   type: LoadBalancer
