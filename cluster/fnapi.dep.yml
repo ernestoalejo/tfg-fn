@@ -20,6 +20,8 @@ spec:
         ports:
         - containerPort: 50050
           name: grpc
+        - containerPort: 8080
+          name: http
         env:
         - name: DATABASE_ADDRESS
           value: rethinkdb

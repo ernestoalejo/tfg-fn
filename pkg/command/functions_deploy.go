@@ -43,7 +43,7 @@ var FunctionsDeployCmd = &cobra.Command{
 			return errors.Trace(err)
 		}
 		defer os.RemoveAll(dir)
-		logrus.WithFields(logrus.Fields{"directory": dir}).Info("build production container")
+		logrus.WithFields(logrus.Fields{"directory": dir, "function": app.Function.Name}).Info("build production container")
 
 		logrus.Info("copy runtime files")
 		c := exec.Command("bash", "-c", fmt.Sprintf("cp runtime/nodejs/* %s", dir))

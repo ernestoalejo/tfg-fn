@@ -5,6 +5,8 @@ import (
 	"github.com/spf13/cobra"
 	"golang.org/x/net/context"
 
+	"github.com/Sirupsen/logrus"
+
 	pb "github.com/ernestoalejo/tfg-fn/protos"
 )
 
@@ -19,6 +21,7 @@ var FunctionsDeleteCmd = &cobra.Command{
 		if _, err := client.DeleteFunction(context.Background(), &pb.DeleteFunctionRequest{Name: args[0]}); err != nil {
 			return errors.Trace(err)
 		}
+		logrus.WithFields(logrus.Fields{"function": args[0]}).Info("delete function")
 
 		return nil
 	},

@@ -6,6 +6,7 @@ import (
 	"os"
 
 	"github.com/Sirupsen/logrus"
+	"github.com/husobee/vestigo"
 	"golang.org/x/net/context"
 	"golang.org/x/net/trace"
 	"google.golang.org/grpc"
@@ -13,6 +14,8 @@ import (
 	r "gopkg.in/dancannon/gorethink.v2"
 
 	"github.com/ernestoalejo/tfg-fn/pkg/api"
+	fnctx "github.com/ernestoalejo/tfg-fn/pkg/context"
+	"github.com/ernestoalejo/tfg-fn/pkg/proxy"
 	pb "github.com/ernestoalejo/tfg-fn/protos"
 )
 
@@ -38,9 +41,16 @@ func main() {
 
 	s := grpc.NewServer(grpc.UnaryInterceptor(interceptor))
 
-	// HTTP port won't be exposed in GRPC services, allow all admin connections to see metrics.
 	trace.AuthRequest = func(r *http.Request) (bool, bool) { return true, true }
-	go func() { http.ListenAndServe(":8000", nil) }()
+	go func() {
+		r := vestigo.NewRouter()
+		proxy.NewServer(r, db)
+
+		logrus.Info("server listening in :8080 to HTTP connections")
+		http.ListenAndServe(":8080", r)
+	}()
+
+	go fnctx.BgProcessor()
 
 	pb.RegisterFnServer(s, api.NewServer(db))
 

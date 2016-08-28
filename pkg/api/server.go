@@ -69,9 +69,10 @@ func (s *Server) DeployFunction(ctx context.Context, in *pb.DeployFunctionReques
 	}
 
 	client := kubernetes.NewClient(s.token)
+
 	deployment := &kubernetes.Deployment{
 		APIVersion: "extensions/v1beta1",
-		Metadata:   &kubernetes.ObjectMeta{Name: "registry"},
+		Metadata:   &kubernetes.ObjectMeta{Name: fn.Name},
 		Spec: &kubernetes.DeploymentSpec{
 			RevisionHistoryLimit: 1,
 			Strategy: &kubernetes.DeploymentStrategy{
@@ -111,6 +112,12 @@ func (s *Server) DeployFunction(ctx context.Context, in *pb.DeployFunctionReques
 
 func (s *Server) DeleteFunction(ctx context.Context, in *pb.DeleteFunctionRequest) (*pb_empty.Empty, error) {
 	if _, err := r.Table(models.TableFunctions).Get(in.Name).Delete().RunWrite(s.db); err != nil {
+		return nil, errors.Trace(err)
+	}
+
+	client := kubernetes.NewClient(s.token)
+
+	if err := client.DeleteDeployment(in.Name); err != nil {
 		return nil, errors.Trace(err)
 	}
 

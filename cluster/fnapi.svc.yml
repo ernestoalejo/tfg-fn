@@ -10,4 +10,7 @@ spec:
   - port: 50050
     targetPort: 50050
     name: grpc
+  - port: 8080
+    targetPort: 8080
+    name: http
   type: LoadBalancer
