@@ -2,5 +2,5 @@
 
 
 module.exports = function(request, response) {
-  response.write('Hello: ${request.query.name}');
+  setTimeout(() => response.write(`Hello: ${request.form.name}`), 70);
 };

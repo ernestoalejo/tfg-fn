@@ -5,7 +5,6 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"net/http"
 
@@ -50,12 +49,10 @@ func (c *Client) call(method, url string, request, response interface{}) error {
 		return errors.Errorf("bad http status: %s: %s", resp.Status, content)
 	}
 
-	if err := json.NewDecoder(resp.Body).Decode(response); err != nil {
-		if err == io.EOF {
-			return nil
+	if response != nil {
+		if err := json.NewDecoder(resp.Body).Decode(response); err != nil {
+			return errors.Trace(err)
 		}
-
-		return errors.Trace(err)
 	}
 
 	return nil
@@ -68,8 +65,9 @@ type Deployment struct {
 }
 
 type ObjectMeta struct {
-	Name   string            `json:"name"`
-	Labels map[string]string `json:"labels"`
+	Name      string            `json:"name"`
+	Namespace string            `json:"namespace,omitempty"`
+	Labels    map[string]string `json:"labels"`
 }
 
 type DeploymentSpec struct {
@@ -147,6 +145,12 @@ type PodList struct {
 
 type Pod struct {
 	Metadata *ObjectMeta `json:"metadata"`
+	Status   *PodStatus  `json:"status"`
+}
+
+type PodStatus struct {
+	Phase string `json:"phase"`
+	PodIP string `json:"podIP"`
 }
 
 func (c *Client) GetPods() ([]*Pod, error) {
@@ -156,4 +160,34 @@ func (c *Client) GetPods() ([]*Pod, error) {
 	}
 
 	return resp.Items, nil
+}
+
+func (c *Client) GetPod(podName string) (*Pod, error) {
+	resp := new(Pod)
+	if err := c.call("GET", fmt.Sprintf("/api/v1/namespaces/default/pods/%s", podName), nil, resp); err != nil {
+		return nil, errors.Trace(err)
+	}
+
+	return resp, nil
+}
+
+type Scale struct {
+	APIVersion string      `json:"apiVersion"`
+	Metadata   *ObjectMeta `json:"metadata"`
+	Spec       *ScaleSpec  `json:"spec"`
+}
+
+type ScaleSpec struct {
+	Replicas int64 `json:"replicas"`
+}
+
+func (c *Client) ScaleDeployment(deploymentName string, replicas int64) error {
+	req := &Scale{
+		Metadata: &ObjectMeta{
+			Name:      deploymentName,
+			Namespace: "default",
+		},
+		Spec: &ScaleSpec{Replicas: replicas},
+	}
+	return errors.Trace(c.call("PUT", fmt.Sprintf("/apis/extensions/v1beta1/namespaces/default/deployments/%s/scale", deploymentName), req, nil))
 }

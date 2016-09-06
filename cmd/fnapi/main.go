@@ -50,7 +50,7 @@ func main() {
 		http.ListenAndServe(":8080", r)
 	}()
 
-	go fnctx.BgProcessor()
+	go fnctx.BgProcessor(db)
 
 	pb.RegisterFnServer(s, api.NewServer(db))
 

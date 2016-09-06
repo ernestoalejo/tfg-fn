@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"sync"
 	"time"
 
 	"github.com/Sirupsen/logrus"
@@ -17,18 +18,47 @@ import (
 type Backend struct {
 	Process chan *Call
 
-	token   string
-	name    string
-	closers map[string]chan bool
+	latency chan int64
+
+	// Read only info of the backend
+	call  string
+	token string
+	name  string
+
+	// Owned by the controller
+	closers   map[string]chan bool
+	lastClose time.Time
+
+	// Owned by the latency controller, accesed by the controller too
+	mu             *sync.Mutex
+	averageLatency int64
 }
 
-func NewBackend(token, name string) *Backend {
+func NewBackend(token, name, call string) *Backend {
 	backend := &Backend{
-		name:  name,
-		token: token,
+		Process: make(chan *Call, 1000),
+		call:    call,
+		token:   token,
+		name:    name,
+		closers: map[string]chan bool{},
+		latency: make(chan int64, 100),
+		mu:      new(sync.Mutex),
 	}
 	go backend.Controller()
+	go backend.LatencyController()
 	return backend
+}
+
+func (backend *Backend) LatencyController() {
+	var numerator int64
+	var values int64
+	for r := range backend.latency {
+		values++
+		numerator += r
+		backend.mu.Lock()
+		backend.averageLatency = numerator / values
+		backend.mu.Unlock()
+	}
 }
 
 func (backend *Backend) Controller() {
@@ -49,7 +79,6 @@ func (backend *Backend) Controller() {
 			}
 			names = append(names, pod.Metadata.Name)
 		}
-		logrus.WithFields(logrus.Fields{"pods": names, "function": backend.name}).Info("pods updated")
 
 		active := map[string]bool{}
 		for _, name := range names {
@@ -57,14 +86,37 @@ func (backend *Backend) Controller() {
 			if backend.closers[name] == nil {
 				backend.closers[name] = make(chan bool, 1)
 				go backend.Processor(name, backend.closers[name])
-				logrus.WithFields(logrus.Fields{"pod": name, "function": backend.name}).Info("enable pod")
 			}
 		}
 		for name := range backend.closers {
 			if !active[name] {
 				backend.closers[name] <- true
 				delete(backend.closers, name)
-				logrus.WithFields(logrus.Fields{"pod": name, "function": backend.name}).Info("disable pod")
+			}
+		}
+
+		backend.mu.Lock()
+		averageLatency := backend.averageLatency
+		backend.mu.Unlock()
+		pending := int64(len(backend.Process))
+		current := int64(len(backend.closers))
+		logrus.WithFields(logrus.Fields{
+			"pods":           names,
+			"function":       backend.name,
+			"pending":        pending,
+			"current":        current,
+			"averageLatency": averageLatency,
+		}).Info("controller update")
+		if (current == 0 && pending > 0) || (current > 0 && pending*averageLatency/current > 150) {
+			logrus.WithFields(logrus.Fields{"function": backend.name, "desired": current + 1}).Info("scale up function")
+			if err := client.ScaleDeployment(backend.name, current+1); err != nil {
+				logrus.WithFields(logrus.Fields{"error": err}).Error("cannot scale deployment")
+			}
+		} else if current > 0 && pending*averageLatency/(current-1) < 100 && time.Now().Sub(backend.lastClose) > 50*time.Second {
+			backend.lastClose = time.Now()
+			logrus.WithFields(logrus.Fields{"function": backend.name, "desired": current - 1}).Info("scale down function")
+			if err := client.ScaleDeployment(backend.name, current-1); err != nil {
+				logrus.WithFields(logrus.Fields{"error": err}).Error("cannot scale deployment")
 			}
 		}
 
@@ -73,17 +125,40 @@ func (backend *Backend) Controller() {
 }
 
 type Context struct {
+	Call    string   `json:"call"`
 	Request *Request `json:"request"`
 }
 
-func (backend *Backend) Processor(pod string, closer chan bool) {
+func (backend *Backend) Processor(podName string, closer chan bool) {
+	client := kubernetes.NewClient(backend.token)
+	var podIP string
+	for {
+		pod, err := client.GetPod(podName)
+		if err != nil {
+			logrus.WithFields(logrus.Fields{"error": err, "pod": podName}).Error("cannot get pod")
+			time.Sleep(5 * time.Second)
+			continue
+		}
+		if pod.Status.Phase != "Running" {
+			logrus.WithFields(logrus.Fields{"pod": podName}).Error("waiting pod")
+			time.Sleep(5 * time.Second)
+			continue
+		}
+		podIP = pod.Status.PodIP
+		break
+	}
+	logrus.WithFields(logrus.Fields{"pod": podName, "function": backend.name}).Info("enable pod")
+
 	for {
 		select {
 		case <-closer:
+			logrus.WithFields(logrus.Fields{"pod": podName, "function": backend.name}).Info("disable pod")
 			return
 
 		case call := <-backend.Process:
+			start := time.Now()
 			c := &Context{
+				Call:    backend.call,
 				Request: call.Request,
 			}
 			buf := bytes.NewBuffer(nil)
@@ -92,7 +167,7 @@ func (backend *Backend) Processor(pod string, closer chan bool) {
 				continue
 			}
 
-			req, _ := http.NewRequest("POST", fmt.Sprintf("%s:50050", pod), buf)
+			req, _ := http.NewRequest("POST", fmt.Sprintf("http://%s:50050", podIP), buf)
 			resp, err := http.DefaultClient.Do(req)
 			if err != nil {
 				call.Error <- errors.Trace(err)
@@ -107,6 +182,7 @@ func (backend *Backend) Processor(pod string, closer chan bool) {
 			}
 
 			call.Response <- string(contents)
+			backend.latency <- int64(time.Now().Sub(start) / time.Millisecond)
 		}
 	}
 }
