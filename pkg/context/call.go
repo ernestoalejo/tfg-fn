@@ -69,3 +69,20 @@ func BgProcessor(db *r.Session) {
 		backends[call.Name].Process <- call
 	}
 }
+
+type FunctionStats struct {
+	Instances      int64
+	AverageLatency int64
+}
+
+func Stats() map[string]*FunctionStats {
+	stats := map[string]*FunctionStats{}
+	for name, backend := range backends {
+		stats[name] = &FunctionStats{
+			Instances:      backend.instances,
+			AverageLatency: backend.averageLatency,
+		}
+	}
+
+	return stats
+}

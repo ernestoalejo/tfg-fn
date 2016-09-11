@@ -16,6 +16,7 @@ import (
 	"github.com/ernestoalejo/tfg-fn/pkg/api"
 	fnctx "github.com/ernestoalejo/tfg-fn/pkg/context"
 	"github.com/ernestoalejo/tfg-fn/pkg/proxy"
+	"github.com/ernestoalejo/tfg-fn/pkg/web"
 	pb "github.com/ernestoalejo/tfg-fn/protos"
 )
 
@@ -45,6 +46,7 @@ func main() {
 	go func() {
 		r := vestigo.NewRouter()
 		proxy.NewServer(r, db)
+		web.Register(r, db)
 
 		logrus.Info("server listening in :8080 to HTTP connections")
 		http.ListenAndServe(":8080", r)

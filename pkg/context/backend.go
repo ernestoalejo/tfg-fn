@@ -32,6 +32,7 @@ type Backend struct {
 	// Owned by the latency controller, accesed by the controller too
 	mu             *sync.Mutex
 	averageLatency int64
+	instances      int64
 }
 
 func NewBackend(token, name, call string) *Backend {
@@ -99,23 +100,24 @@ func (backend *Backend) Controller() {
 		averageLatency := backend.averageLatency
 		backend.mu.Unlock()
 		pending := int64(len(backend.Process))
-		current := int64(len(backend.closers))
+		backend.instances = int64(len(backend.closers))
 		logrus.WithFields(logrus.Fields{
 			"pods":           names,
 			"function":       backend.name,
 			"pending":        pending,
-			"current":        current,
+			"instances":      backend.instances,
 			"averageLatency": averageLatency,
 		}).Info("controller update")
-		if (current == 0 && pending > 0) || (current > 0 && pending*averageLatency/current > 150) {
-			logrus.WithFields(logrus.Fields{"function": backend.name, "desired": current + 1}).Info("scale up function")
-			if err := client.ScaleDeployment(backend.name, current+1); err != nil {
+		if (backend.instances == 0 && pending > 0) || (backend.instances > 0 && pending*averageLatency/backend.instances > 150) {
+			logrus.WithFields(logrus.Fields{"function": backend.name, "desired": backend.instances + 1}).Info("scale up function")
+			if err := client.ScaleDeployment(backend.name, backend.instances+1); err != nil {
 				logrus.WithFields(logrus.Fields{"error": err}).Error("cannot scale deployment")
 			}
-		} else if current > 0 && pending*averageLatency/(current-1) < 100 && time.Now().Sub(backend.lastClose) > 50*time.Second {
+		}
+		if ((backend.instances > 1 && pending*averageLatency/(backend.instances-1) < 100) || backend.instances == 1) && time.Now().Sub(backend.lastClose) > 50*time.Second {
 			backend.lastClose = time.Now()
-			logrus.WithFields(logrus.Fields{"function": backend.name, "desired": current - 1}).Info("scale down function")
-			if err := client.ScaleDeployment(backend.name, current-1); err != nil {
+			logrus.WithFields(logrus.Fields{"function": backend.name, "desired": backend.instances - 1}).Info("scale down function")
+			if err := client.ScaleDeployment(backend.name, backend.instances-1); err != nil {
 				logrus.WithFields(logrus.Fields{"error": err}).Error("cannot scale deployment")
 			}
 		}

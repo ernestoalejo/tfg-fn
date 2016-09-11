@@ -1,0 +1,75 @@
+
+{{define "page"}}
+  <h1>Monitorización</h1>
+  <p>&nbsp;</p>
+
+  <div id="chart">
+    <svg style="height: 350px;"></svg>
+  </div>
+
+  <script type="text/javascript">
+
+    var data = {};
+    
+    $(function() {
+      nv.addGraph(function() {
+        var chart = nv.models.lineChart()
+         .options({
+            duration: 300,
+            useInteractiveGuideline: true
+          });
+
+        chart.forceY([0, 12]);
+
+        chart.xAxis
+          .axisLabel('Segundos')
+          .tickFormat(d3.format('d'));
+
+        chart.yAxis
+          .axisLabel('Número de instancias')
+          .tickFormat(d3.format('d'));
+
+        var chartData = d3.select('#chart svg').datum(prepare());
+        chartData.call(chart);
+
+        var t = 0;
+        setInterval(function() {
+          t += 2;
+          $.ajax({
+            url: '/monitoring/api',
+          }).done(function(response) {
+            response = JSON.parse(response);
+            for (var name in response) {
+              var resp = {x: t, y: response[name].Instances};
+
+              if (data[name]) {
+                data[name].push(resp);
+                if (data[name].length > 500) {
+                  data[name] = data[name].splice(1, 501);
+                }
+              } else {
+                data[name] = [resp];
+              }
+            }
+          });
+
+          chartData.datum(prepare()).transition().duration(500).call(chart);
+        }, 2000);
+
+        return chart;
+      });
+
+      function prepare() {
+        var res = [];
+        for (var name in data) {
+          res.push({
+            values: data[name],
+            key: name,
+          });
+        }
+        return res;
+      }
+    });
+
+  </script>
+{{end}}
