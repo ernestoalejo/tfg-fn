@@ -1,0 +1,149 @@
+\chapter{Fn: seguridad en las comunicaciones}
+\label{chap:fn-seguridad}
+
+La seguridad en los últimos años se ha visto en el foco de mira tras las revelaciones de que diversas agencias de inteligencia por todo el mundo se dedican a espiar y analizar las comunicaciones de forma masiva. Existe un movimiento continuo a asegurar las páginas webs y cualquier otra comunicación como mensajes de chat. El objetivo aparte de la privacidad es el buen funcionamiento de los sistemas: el código que inyectan para anuncios y otros propósitos suele provocar defectos al usar la aplicación que se vea afectada.
+
+Al hablar de administración de servidores la seguridad es incluso más importante. Si interceptan el código de la función que estamos subiendo o permitimos que ejecuten comandos sin darnos cuenta las consecuencias se pueden extender a toda nuestra base de usuarios rápidamente provocando un desastre mayor que una simple interceptación individual.
+
+La comunicación entre la herramienta y el servidor se realiza usando GRPC como he expuesto en el capítulo 5. La librería usa el protocolo HTTP por debajo para realizar las llamadas como también he explicado. Los autores tuvieron en cuenta que había un paso muy corto para tener una seguridad completa si usaban HTTPS sin tener que reinventar la rueda con los métodos criptográficos a usar. La librería permite tener tanto certificados del servidor como certificados del cliente para autentificar a la otra parte y saber que nadie esté en medio escuchando (\emph{man in the middle}). Además podemos extraer la información del certificado que nos proporcione el cliente en cada llamada al servidor para validar los datos: que no hayan caducado, que el cliente esté autorizado a realizar esa llamada, etc.
+
+No existe necesidad de usar a un tercero para firmar los certificados dado que controlamos totalmente el código del cliente y el servidor y siempre podemos asegurar la autenticidad de esa firma. En mi aplicación los he autogenerado y los valido correctamente, no se podrían sustituir por otros autogenerados falsos.
+
+\section{Generación de certificados}
+
+La generación de certificados suele darse por algo tedioso y poco conocido. En realidad usando las herramientas adecuadas  es bastante fácil de entender. En mi caso voy a generarlas usando CFSSL\cite{cfssl}, un conjunto de aplicaciones de la compañía CloudFlare que facilitan las interacciones para estar tareas. Con estos programas tenemos la ventaja de definir los certificados con unos simples ficheros JSON.
+
+En concreto voy a usar dos de las herramientas: \emph{cfssl} y \emph{cfssljson}. El primero genera claves y certificados basándose en las configuraciones JSON que le pasemos; el segundo coge el resultado y lo transforma en los clásicos ficheros intercambiables PEM.
+
+La generación tiene dos pasos. Por un lado vamos a generar una clave privada para simular nuestra propia autorizada firmadora de certificados. Esta clave jamás debe caer en manos ajenas y es la que acredita que la firma de un cliente la hemos emitido nosotros. Con esa clave vamos a firmar una pareja de certificados para el servidor y el cliente.
+
+\subsection{Generación de la autoridad firmadora}
+
+Generar una clave y un certificado con CFSSL es una tarea sencilla, solamente tenemos que especificar en JSON la información del certificado:
+
+\begin{minted}[baselinestretch=1.2]{json}
+{
+  "CN": "tfg-fn CA",
+  "key": {
+    "algo": "rsa",
+    "size": 2048
+  },
+  "names": [
+    {
+      "C": "ES",
+      "L": "Granada",
+      "O": "Ernesto Alejo",
+      "OU": "tfg-fn",
+      "ST": "Granada"
+    }
+  ]
+}
+\end{minted}
+
+A continuación ejecutamos el comando:
+
+\texttt{cfssl gencert -initca ca-csr.json | cfssljson -bare ca}
+
+Como se aprecia la llamada se limita a introducir la información y escribir en \emph{ca.csr}, \emph{ca-key.pem} y \emph{ca.pem} la petición de firma, la clave privada y el certificado público respectivamente.
+
+\subsection{Generación de certificados}
+
+La generación de certificados firmados con el CA requiere de un fichero adicional que configura los usos que se le pueden dar a los certificados firmados, también en JSON.
+
+\begin{minted}[baselinestretch=1.2]{json}
+{
+  "signing": {
+    "default": {
+      "expiry": "8760h"
+    },
+    "profiles": {
+      "server": {
+        "usages": ["signing", "key encipherment", "server auth"],
+        "expiry": "8760h"
+      },
+      "client": {
+        "usages": ["signing", "key encipherment", "client auth"],
+        "expiry": "8760h"
+      }
+    }
+  }
+}
+\end{minted}
+
+Con esto y un fichero similar al del apartado anterior podemos generar lo necesario para firmar al cliente y al servidor. Ambos son completamente similares a excepción de los hosts permitidos para ese certificado.
+
+\texttt{cfssl gencert -ca=ca.pem -ca-key=ca-key.pem -config=ca-config.json -profile=server server-csr.json | cfssljson -bare server}
+
+El comando coge la información que le hemos especificado, la información del certificado del servidor y las claves del CA para firmarlo. La salida la guarda en 3 ficheros repartidos igual que antes.
+
+\section{Implementación en Go}
+
+Go tiene en su librería estándar todas las utilidades y funciones necesarias para cargar certificados y validarlos. Además GRPC añade acortaciones encima de eso para hacernos la vida incluso más fácil.
+
+En las siguientes secciones voy a suponer que ya se ha leído el contenido de los ficheros PEM en un array de bytes. Hay métodos que lo hacen fácilmente (\texttt{ioutil.ReadFile}) o podríamos incluso tenerlo inline en el propio programa, son unas cuantas decenas de líneas nada más.
+
+\subsection{Comprobación en el cliente}
+
+En el cliente tenemos dos tareas distintas:
+\begin{enumerate}
+    \item Validar que el servidor emite un certificado válido.
+    \item Enviar nuestro certificado con las conexiones.
+\end{enumerate}
+
+La validación del certificado del servidor la hacen la librerías por defecto cuando nos conectamos por HTTPS, el transporte que usa por debajo GRPC. Si quisiéramos que no los validase es cuando necesitamos opciones adicionales explícitas. Necesitamos eso sí añadir el certificado de la autoridad firmadora (\emph{CA}) a la piscina de entidades fiables para las conexiones de nuestra aplicación.
+
+\begin{minted}[baselinestretch=1.2]{go}
+tlsCert := "..." // client.pem file
+tlsKey := "..."  // client-key.pem file
+tlsCA := "..."   // ca.pem file
+
+// Piscina de entidades fiables
+caCertPool := x509.NewCertPool()
+caCertPool.AppendCertsFromPEM(tlsCA)
+
+cert, err := tls.X509KeyPair(tlsCert, tlsKey)
+if err != nil {
+  ...
+}
+creds := credentials.NewTLS(&tls.Config{
+	Certificates: []tls.Certificate{cert},
+	ClientCAs:    caCertPool,
+})
+
+server := grpc.NewServer(grpc.Creds(creds))
+\end{minted}
+
+\subsection{Comprobación en el servidor}
+
+En el servidor tenemos tres tareas:
+\begin{enumerate}
+    \item Emitir un certificado SSL válido en las conexiones.
+    \item Pedir un certificado a todas las conexiones de clientes.
+    \item Validar el certificado del cliente.
+\end{enumerate}
+
+Emitir un certificado se hace de manera similar al apartado anterior. Añadimos una opción para los puntos 2 y 3 de requerir y validar al cliente. De nuevo necesitamos añadir el certificado de la autoridad firmadora (\emph{CA}) a la piscina de entidades fiables para las conexiones de nuestra aplicación.
+
+\begin{minted}[baselinestretch=1.2]{go}
+tlsCert := "..." // server.pem file
+tlsKey := "..."  // server-key.pem file
+tlsCA := "..."   // ca.pem file
+
+// Piscina de entidades fiables
+caCertPool := x509.NewCertPool()
+caCertPool.AppendCertsFromPEM(tlsCA)
+
+cert, err := tls.X509KeyPair(tlsCert, tlsKey)
+if err != nil {
+  ...
+}
+creds := credentials.NewTLS(&tls.Config{
+	Certificates: []tls.Certificate{cert},
+	ClientCAs:    caCertPool,
+	
+	// Nuevo añadido para validar a los clientes
+	ClientAuth:   tls.RequireAndVerifyClientCert,
+})
+
+server := grpc.NewServer(grpc.Creds(creds))
+\end{minted}

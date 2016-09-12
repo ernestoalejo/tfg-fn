@@ -1,0 +1,32 @@
+\documentclass[
+    a4paper,
+    12pt
+]{report}
+
+\input{include/preamble}
+
+\title{Thesis}
+\author{Ernesto Alejo Oltra}
+\date{\today}
+
+\begin{document}
+
+\import{include/}{titlepage.tex}
+
+\import{content/}{01-prefacios.tex}
+\import{content/}{02-introduccion.tex}
+\import{content/}{03-docker.tex}
+\import{content/}{04-kubernetes.tex}
+\import{content/}{05-grpc.tex}
+\import{content/}{06-rethinkdb.tex}
+\import{content/}{07-everything-as-a-service.tex}
+\import{content/}{08-fn-introduccion.tex}
+\import{content/}{09-fn-guia-de-usuario.tex}
+\import{content/}{10-fn-implementacion.tex}
+\import{content/}{11-fn-seguridad.tex}
+\import{content/}{12-prevision-futuro.tex}
+\import{content/}{13-conclusiones.tex}
+
+\printbibliography
+
+\end{document}

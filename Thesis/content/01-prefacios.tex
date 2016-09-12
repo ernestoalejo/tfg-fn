@@ -1,0 +1,89 @@
+%-------------------------------------------------------------------------------
+%    Abstract
+%-------------------------------------------------------------------------------
+
+\newpage\null\thispagestyle{empty}\newpage
+
+\renewcommand\abstractname{{Abstract}}
+
+\begin{abstract}
+    This thesis aims to prototype an application to provide users with a FaaS implementation, where a plain old function is exposed easily in a server where it can scale up when the load comes. It approaches the problem with a dual solution including a web control panel and a command line tool. It explains Docker and the container virtualization technologies comparing several of them. It analyzes Kubernetes in depth to justify its core position managing the system and the machines. It addresses intercomponents communications from the GRPC point of view. With the explained technologies it achieves the objetives implementing the proposed application.
+    
+    {\bf Keywords:} Docker, Kubernetes, GRPC, RethinkDB, FaaS, Go, SSL, HTTP/2, scalable.
+\end{abstract}
+
+\begin{abstract}
+    Este trabajo busca un prototipo de aplicación para gestionar un sistema FaaS, en el que una función de un lenguaje de programación normal actúa de servidor y autoescala con la carga que reciba. Busca la dualidad de un panel de control web y una herramienta de línea de comandos para facilitar el uso. Analiza y compara las diferentes tecnologías de contenedores para aislar y poder mantener varias instancias activas. Entra en profundidad a explicar Kubernetes que resulta ser el corazón del funcionamiento del prototipo administrando el sistema y las máquinas. Explora qué necesidades existen en la comunicación entre componentes y como lo vamos a suplir con GRPC. Con todas esas tecnologías en nuestro poder cierra los objetivos abordando la implementación de la aplicación propuesta.
+\end{abstract}
+
+\thispagestyle{empty}
+
+Yo, \textbf{Ernesto Alejo Oltra}, alumno de la titulación GRADO EN INGENIERÍA
+INFORMÁTICA de la \textbf{Escuela Técnica Superior de Ingenierías Informática y
+de Telecomunicación de la Universidad de Granada}, con DNI 77138562N, autorizo
+la ubicación de la siguiente copia de mi Trabajo Fin de Grado en la biblioteca
+del centro para que pueda ser consultada por las personas que lo deseen.
+
+\vspace{2cm}
+
+\noindent \textbf{Fdo}: Ernesto Alejo Oltra
+
+\vspace{2cm}
+
+\begin{flushright}
+    Granada a 11 de Septiembre de 2016.
+\end{flushright}
+
+\newpage\null\thispagestyle{empty}
+
+D. \textbf{Héctor Pomares Cintas}, Profesor del Dpto. Arquitectura y Tecnología
+de Computadores de la Universidad de Granada.
+
+\vspace{0.5cm}
+
+\textbf{Informa:}
+
+\vspace{0.5cm}
+
+Que el presente trabajo, titulado \textit{\textbf{FaaS sobre Kubernetes}}, ha sido
+realizado bajo su supervisión por \textbf{Héctor Pomares Cintas}, y autorizamos
+la defensa de dicho trabajo ante el tribunal que corresponda.
+
+\vspace{0.5cm}
+
+Y para que conste, expiden y firman el presente informe en Granada a
+11 de Septiembre de 2016.
+
+\vspace{1cm}
+
+\textbf{El director:}
+
+\vspace{1cm}
+
+\noindent \textbf{Héctor Pomares Cintas}
+
+
+%-------------------------------------------------------------------------------
+%    Table of Contents
+%-------------------------------------------------------------------------------
+
+\tableofcontents
+\thispagestyle{empty}
+
+
+%-------------------------------------------------------------------------------
+%    List of Figures
+%-------------------------------------------------------------------------------
+
+\listoffigures
+\thispagestyle{empty}
+
+
+%-------------------------------------------------------------------------------
+%    List of Tables
+%-------------------------------------------------------------------------------
+
+\listoftables
+\thispagestyle{empty}
+
+\newpage\null\thispagestyle{empty}\newpage

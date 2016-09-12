@@ -1,0 +1,59 @@
+\chapter{Introducción}
+\label{chap:introduccion}
+
+\section{Problema}
+
+Diseñar aplicaciones servidoras ha sido tradicionalmente una tarea que requiere de ciertos conocimientos. Antes siquiera de tocar nuestra aplicación la petición web que llega ya ha tenido que pasar por un servidor que hay que configurar, un subsistema de enrutamiento que hay que preparar, y quizás cosas más complejas como middlewares o filtros.
+
+En los últimos años y con los avances que ha habilitado la computación en la nube ha aflorado la necesidad de simplificar el despliegue de código para pequeñas tareas. Surge principalmente de analistas de datos y administradores de sistemas; ambos necesitan en su día a día pequeñas tareas (una función de código) que pueda mantenerse en un servidor online e incluso que mucha gente use (necesita escalabilidad).
+
+Esta necesidad de herramientas fáciles que nos eviten la ardua configuración y mantenimiento de los servidores se ha visto reflejado en el mercado que ofrece un nuevo paradigma denominado FaaS. Todos los proveedores usan el paradigma de programación en la nube de turno para dar ese servicio sin un patrón común que los guíe.
+
+\section{Objetivos}
+
+El objetivo principal de mi aplicación es conseguir un sistema de control para poder ejecutar funciones en los servidores haciendo de proveedores de un modelo FaaS (\emph{Function as a Service}, se amplia en la sección \ref{sec:faas}). Diseñaremos también alguna herramienta de desarrollo local para facilitar el despliegue de nuevas funciones y su control al igual que un panel web que habilite ciertas tareas como consultar los logs.
+
+El sistema será de código abierto y estará basado a su vez en otros proyectos de código abierto y multiproveedor. Se intentará llegar al mayor número posible de plataformas para que el usuario tenga la última opinión sobre qué hardware quiere contratar y en qué condiciones. Siempre intentaré bajar el nivel de \emph{vendor lock in} con mi producto y las decisiones que tome.
+
+Para la implementación quiero innovar y conseguir un stack de tecnologías moderno, eficiente y adaptado a la computación en la nube. Quiero llegar más alla de una simple aplicación web que es algo que se enseña dentro de la carrera y que mi TFG toque herramientas que se estén empezando a usar en estos momentos para cargas importantes de producción. Algunos de los recursos que voy a utilizar, como GRPC para la comunicación entre componentes, apenas han salido de beta hace semanas a pesar de que Google haya usado librerías parecidas internamente durante años.
+
+Esta innovación preveo que me llevará a una mejor competitividad del producto si alguna vez saliera al mercado, que mejorará la eficiencia y usabilidad frente a otras soluciones que puedan ya existir previamente y que me permitirá aprender y explorar los límites de esas tecnologías.
+
+Preveo que el trabajo va a tener una gran carga inicial en cuanto a elegir bien las librerías, comparar las tecnologías y diseñar las bases de lo que finalmente formará parte del sistema. Es muy posible que termine con un prototipo local que demuestre las posibilidades y establezca ejemplos de como implementar las funcionalidades que falten que sean parecidas a las que yo haga.
+
+\section{Planteamiento temporal}
+
+En la tabla \ref{table:time} podemos observar mi previsión sobre cómo voy a repartir el tiempo del proyecto para conseguir los objetivos propuestos.
+
+{\renewcommand{\arraystretch}{1}%
+\begin{table}[H]
+\centering
+\begin{tabularx}{\textwidth}{llX}
+\textbf{Comienzo} & \textbf{Final}  & \multicolumn{1}{c}{\textbf{Tarea}}                                                    \\ \hline
+\textit{25 may}   & \textit{25 jul} & Documentarnos sobre los contenedores y la gestión de servidores.                      \\
+\textit{25 jul}   & \textit{25 jul} & Abrimos el repositorio en GitHub para el código fuente.                               \\
+\textit{25 jul}   & \textit{10 ago} & Hacemos pruebas con las librerías que finalmente usaremos para aprender a manejarlas. \\
+\textit{10 ago}   & \textit{15 ago} & Listamos funciones y almacenamos sus metadatos de forma permanente.                   \\
+\textit{15 ago}   & \textit{21 ago} & Triggers HTTP en funcionamiento.                                                      \\
+\textit{21 ago}   & \textit{23 ago} & Desplegar las aplicaciones en un cluster local de pruebas.                            \\
+\textit{23 ago}   & \textit{28 ago} & Arquitectura de multi-gorutinas independientes para llamar a las funciones.           \\
+\textit{28 ago}   & \textit{1 sep}  & Monitorización. \\
+\textit{1 sep}   & \textit{1 sep}  & Certificados SSL para la comunicación. \\
+\end{tabularx}
+\caption{Planteamiento temporal del trabajo}
+\label{table:time}
+\end{table}
+
+\section{Código fuente}
+
+El código fuente de este proyecto es público y está almacenado en un repositorio de la plataform GitHub bajo una licencia MIT:
+
+    \url{https://github.com/ernestoalejo/tfg-fn}
+
+\section{Organización de la memoria}
+
+Al ser un proyecto que necesita de ciertos conocimientos avanzados en tecnologías muy recientes voy a dedicar los primeros capítulos a introducir los componentes que conforman la base sobre la que construiré el sistema. El capítulo 3 y 4 introducen la virtualización por contenedores y cómo controlarlos en un cluster. El capítulo 5 explica el mecanismo de comunicación del servidor con sus herramientas. En el capítulo 6 explico como guardo los metadatos de forma persistente cuando ya están en el sistema.
+
+Con estas tecnologías en nuestra mano puedo introducir el paradigma FaaS que quiero implementar en el capítulo 7. Seguidamente los capítulos 8, 9, 10 y 11 describen en profundidad la aplicación, cómo usarla y qué detalles de implementación hay por debajo.
+
+Termino el documento con los aumentos pendientes con los que seguiría trabajando para comercializar mi idea en el capítulo 12 y unas conclusiones sobre el trabajo en el capítulo 14.

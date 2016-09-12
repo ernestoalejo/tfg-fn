@@ -1,0 +1,81 @@
+\chapter{Everything as a Service}
+\label{chap:everything-as-a-service}
+
+La computación en la nube ha traido nuevos paradigmas de computación. Nos podemos permitir subir y bajar nuestros recursos según la necesidad concreta de cada momento. Parte de esta elasticidad a la hora de configurar la carga proviene de usar servicios externos ya preparados para realizar tareas comunes. Esta arquitectura termina orientando a que los proveedores usen servicios para todas las características que quieren ofrecer en su plataforma\cite{antonopoulos2010handbook}.
+
+Los servicios que se ofrecen no tienen todos el mismo nivel de abstracción. El \emph{NIST} los clasifica\cite{petermelltimothygrance2011} en 3 grupos: IaaS, PaaS y SaaS. Por similitud se ha extendido la notación a otros supuestos paradigmas que se diferencian claramente de los tres definidos, como CaaS o FaaS.
+
+\section{IaaS: Infrastructure as a Service}
+
+Proporciona al usuario características básicas como memoria, almacenamiento y capacidad de cómputo. El proveedor se encarga de configurar, mantener y optimizar el hardware aunque deja parte de esa responsabilidad a sus usuarios (enrutamiento, posiblemente cortafuegos, etc).
+
+Se puede ejecutar cualquier aplicación sobre la infraestructura porque al fin y al cabo siguen siendo máquinas con su sistema operativo que configuramos a nuestro gusto. La configuración es similar entre proveedores porque nosotros controlamos todo el stack de software de la máquina.
+
+Suelen facturar dependiendo de los recursos que pidas. Tienen varios tipos de máquina con distintas prestaciones que puedes elegir y que se cobran por minutos, horas, etc. Los mejores ejemplos de este tipo de nube son Google Cloud, Amazon AWS y Digital Ocean entre otros muchos.
+
+\section{PaaS: Platform as a Service}
+
+Expone servicios para que las aplicaciones de los usuarios los usen desde los lenguajes de programación soportados. La máquina concreta no es configurable ni se puede controlar, la da el proveedor ya preparada. Generalmente existen mecanismos avanzados para subir nuevas versiones, controlar cual es la versión de producción, recoger los logs centralizados, monitorizar y otras preocupaciones de despliegue.
+
+A cambio de este control que ejerce el proveedor sobre nuestro entorno nos ofrecen una alta disponibilidad y escalabilidad. Suelen imponer ciertas restricciones para poder asegurar estos supuestos como restringir las escrituras en disco. A cambio te piden que uses las APIs de sus servicios que ofrecen características similares.
+
+Por un lado usar APIs concretas nos ata (\emph{vendor locking}) al proveedor en cuestión quitándonos la oportunidad de cambiar de proveedor sin reescribir parte o la totalidad de la aplicación. Por otro lado nos ofrecen herramientas avanzadas y servicios autoescalables que nosotros tendríamos que programar, configurar y mantener si usamos un IaaS.
+
+La facturación viene por los recursos de los que hagas uso llamando a los servicios en lugar de las prestaciones de dichos servicios. Pueden cobrar por número de peticiones, cantidad de transferencia, etc. Ejemplos de PaaS: Google App Engine, Heroku.
+
+\section{CaaS: Container as a Service}
+
+Una nueva categoría no reconocida que ha surgido recientemente está basada en contenedores. Obtenemos la portabilidad que da empaquetar todos los recursos que necesitamos dentro de un contenedor pero también obtenemos algunas de las herramientas y servicios (monitorización, logs, etc.) que se ofrecen a las aplicaciones montadas sobre un PaaS.
+
+Hay dos proveedores que estén intentando avanzar este modelo: Docker Cloud y Amazon EC2 Container Service. En cierta manera Google Container Engine, OpenShift y CoreOS Tectonic intentan hacer muy simple la ejecución de contenedores como si fueran un CaaS aunque realmente puedes controlar y usar todo el poder de Kubernetes que va mucho más allá de ejecutar contenedores.
+
+De momento la facturación la hacen por máquinas estableciendo un máximo de contenedores que se pueden ejecutar en ellas (por sentido común sobretodo de no sobrecargar un nodo concreto).
+
+\section{FaaS: Function as a Service}
+\label{sec:faas}
+
+Por último llegamos a la categoría que he querido implementar con mi trabajo. El objetivo es coger una estructura simple de programación como la función y convertirla en un servidor sin cambiar nada de su código ni añadir código extra alrededor. La plataforma proporciona herramientas para enviar el código de la función, ejecutarlo e informar al usuario de como activar el código por diversas vías.
+
+Este paradigma de nube conlleva varias ventajas:
+\begin{itemize}
+    \item Son funciones simples con relativamente poco código que se pueden testear de forma independiente sin tener que reproducir un servidor de pruebas.
+    \item Las funciones no dependen de estado global del sistema, solo del estado de los servicios y máquinas externas a las que llamen. Cada instancia que ejecutemos de esa función es totalmente efímera y no necesita que guardemos nada entre ejecuciones.
+    \item Las funciones no dependen de si mismas para ejecutarse, podemos abrir y cerrar instancias según la carga sin preocuparnos por ellas por relacionarlas.
+    \item Si una instancia falla podemos abrir otra en su lugar para substituirla.
+\end{itemize}
+
+Un FaaS por tanto permite ejecutar pequeños trozos de código a modo de microservicios con escalabilidad quasi-infinita, herramientas de desarrollo avanzadas, servicios proporcionados por el proveedor, y sin programar nada de servidores explícitamente en nuestra aplicación. Es ideal para pequeñas tareas que deben ejecutarse muchas veces con picos de tráfico imprevisibles.
+
+La facturación suele venir dada a modo de PaaS según los servicios que uses y la cantidad de llamadas que se hagan a la función que hemos desplegado.
+
+La competencia actual viene de parte de Google Cloud Functions, Amazon Lambda, Auth0 Webtask y Microsoft Functions.
+
+\subsection{Triggers}
+
+Al no tener servidor propio las funciones se desencadenan típicamente por \emph{triggers}, que son eventos que se recogen para saber cuando hay que llamar a la función y con qué datos. Hay tantos triggers posibles como ideas para programarlos, pero generalmente éstos son los más típicos:
+\begin{itemize}
+    \item Endpoint HTTP/HTTPS que ejecuta la función al llamar a una URL (proporcionada por el usuario o por el sistema, es indiferente).
+    \item Eventos al cambiar, subir o eliminar ficheros de un servicio de almacenamiento en la nube como Amazon S3 o Google Cloud Storage.
+    \item Eventos de un sistema de control de versiones como un nuevo pull request en un repositorio de Github.
+    \item Tareas en una cola distribuida, como Google PubSub o Amazon SNS.
+    \item Programación cron que la ejecuta cada cierto tiempo.
+    \item Llamada directa a través de la API del proveedor.
+\end{itemize}
+
+Este modelo tiene todavía muchas oportunidades de negocio por descubrir. Ahora mismo por ejemplo está incipiente y en pruebas llevar todo el desarrollo de las funciones a la nube teniendo directamente el editor con sus ficheros online. Hyperdev\cite{hyperdev} nos deja desarrollar y desplegar una aplicación entera en NodeJS desde su editor online. Cloud9\cite{cloud9} lleva ya bastante tiempo establecido como un editor online con muchas características de depuración y ejecución remota. Poder editar online las funciones y desplegarlas con una autoescalabilidad a millones de personas abre la puerta a nuevos modelos y técnicas de programación.
+
+\subsection{Casos de uso típicos}
+
+Dado que estamos a las puertas de ver todo el potencial de las infraestructuras FaaS mi objetivo aquí no es dar una lista exhaustiva sino sugerencias sobre usos y sector en los que las características de este tipo de servidores son útiles.
+
+\subsubsection{Servidor de aplicaciones móviles}
+
+Muchos de los programadores que trabajan en su propia \emph{start-up} basada en torno a una aplicación móvil apenas tienen conocimiento sobre escalabilidad ni mantenimiento de servidores. Existe una necesidad de pequeños trozos de código que permitan implementar funcionalidades concretas sin tener que mantener la infraestructura. Además cualquier día esa aplicación puede coger tracción y crecer de usuarios exponencialmente. Un sistema montado sobre un FaaS evita problemas de escalabilidad en el momento más importante para la empresa.
+
+\subsubsection{Procesamiento de datos}
+
+Igual que los desarrolladores de aplicaciones para móviles los científicos de datos requieren de un conjunto de capacidades entre las que no suelen estar los servidores. Exponer una función permite subir un modelo para probarlo en otro equipo más potente; o compartirlo en una primera vista previa pública. Si finalmente el prototipo resulta ser acertado el servidor se adaptará a la carga necesaria y podría dar servicio a todos los clientes que usen ese modelo, por ejemplo.
+
+\subsubsection{Internet of Things}
+
+La activación por eventos o \emph{triggers} es un aspecto importante dentro del IoT. Un NFC (\emph{Near-Field Communication}), un lector de tarjetas, una cámara de tráfico, un termómetro en un invernadero, etc.; todos ellos se activan a causa de un evento físico que recogen. Esta programación basada en eventos se simplifica y es fácil de probar en una infraestructura FaaS.

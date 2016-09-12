@@ -1,0 +1,68 @@
+\chapter{Previsión de futuro}
+\label{chap:prevision-futuro}
+
+En este capítulo analizaré aspectos de la aplicación que deben mejorarse para obtener un producto que podamos comercializar sin competencia ninguna a nivel técnico. Algunas de estas mejoras son más directas de implementar que otra pero sin lugar a dudas todas reflejan nuevas funcionalidades necesarias para incrementar el valor del producto.
+
+\section{Multitenant}
+
+Si el producto que tenemos que comercializar tiene como público empresas privadas que desplieguen el sistema internamente la solución adoptada puede ser adecuada. Sin embargo hay empresas más grandes o clientes públicos que necesitan poder separar todos los datos por grupos que correspondan a sus clientes o departamentos de empleados.
+
+Con Kubernetes la solución sería bastante directa porque podemos asignar un \emph{namespace} a cada grupo y crear los pods de la función dentro de él para que no pise a los demás usuarios del cluster. Esta solución trae consigo adicionalmente que los administradores pueden restringir la cantidad de recursos (CPU, memoria, etc.) que pueden usar todas las instancias de un \emph{namespace}.
+
+Las opciones no son alternativas; si por defecto cogemos un \emph{namespace} concreto sin notificar al usuario podemos mantener la funcionalidad que tiene el sistema actualmente sin coste alguno.
+
+\section{Billing}
+
+Un aspecto esencial para establecer un modelo de negocio sobre la aplicación que nos permita usarla para proveer de servicio a otros clientes es el pago de los recursos que gasten. Una licencia que permita un uso indiscriminado favorecería a las empresas grandes, aparte de llevar una filosofía muy distinta al resto de costes del sistema como las máquinas o el almacenamiento. Podríamos mejorar estableciendo como la nube un coste por uso en lugar de un coste fijo.
+
+Debemos tener medios para medir ese coste por uso, ya sea por número de peticiones servidas, cantidad de RAM que damos a cada máquina o el gasto total en CPU (o las 3 medidas juntas). Debe implementarse una monitorización extensiva de esas medidas porque cualquier fallo puede suponer costes importantes para el cliente o el proveedor.
+
+\section{Nuevos lenguajes}
+
+La función en sí misma se ejecuta dentro de un contenedor en el que puede instalarse casi cualquier lenguaje sin problema. Es importante generar un pequeño runtime con los idiomas adecuados del lenguaje para que sea lo más intuitivo posible la manera en la que se recibe el contexto y se devuelve la respuesta.
+
+El protocolo interno de comunicación entre la API y el runtime requiere de un servidor HTTP que sea capaz de recibir la información del contexto por JSON. En un futuro esta restricción se podría levantar y dar más opciones: GRPC, Protobuf sobre HTTP, Apache Thrift, etc.
+
+\section{Arquitectura de miniservicios}
+
+Ahora mismo existen realmente tres componentes separados integrados en el mismo servidor de la API:
+\begin{enumerate}
+    \item El proxy web, que recibe los triggers HTTP y llama a la función.
+    \item El servidor API en sí mismo implementado en GRPC y que responde a todas las peticiones de los clientes de la aplicación como la línea de comandos \emph{fnctl}.
+    \item El bucle de control para autoescalar, que podría implementarse sobre la API mejorándola para incluir nuevas llamadas.
+\end{enumerate}
+
+Para una carga de producción yo hubiera separado estos componentes en 3 microservicios en distintos pods de Kubernetes para poder darles la calidad de servicio que necesitan. No es igual por ejemplo el bucle de control que puede pasar 10 o 15 segundos apagado que el proxy web que supondría una caida del servicio para los clientes. Podemos por tanto determinar múltiples instancias del proxy y una sola para el control.
+
+\section{Actualización de funciones}
+
+Hay que simplificar el flujo de trabajo para poder actualizar funciones in-situ sin tener que eliminarlas antes. Requiere un nuevo subcomando de \emph{fnctl} y Kubernetes se encargaría del resto para ir reiniciando los pods a un ritmo adecuado y lento y evitar bucles de retroalimentación extraños con el autoescalado.
+
+Con la misma infraestructura que preparemos para la actualización de funciones podemos usar los mecanismos que Kubernetes tiene integrados para hacer \emph{rollback} de una version (volver a la versión anterior que no tiene el error) e implementar una cancelación rápida y vuelta a un estado estable si se detectan errores en la actualización del despliegue.
+
+\section{Integración continua}
+
+La construcción de los contenedores se realiza en la versión de Docker local en este prototipo. Esto tiene implicaciones de seguridad en cuanto que podrían intentar modificar artificialmente el runtime. También tiene implicaciones en el tamaño del binario al obligarnos a incorporar todo ese código.
+
+La mejora se limitaría a comprimir todos los ficheros y subirlos a un almacenamiento privado del cluster. De ahí un sistema de integración continua (CI) como Jenkins\cite{jenkins} podría construirlos usando el mayor ancho de banda que tienen los servidores y además de manera segura al controlar el entorno completo de dicha construcción.
+
+El efecto colateral de este cambio es poder eliminar a Docker de la lista de dependencias locales que se necesitan. Podríamos desarrollar desde Windows, Mac o cualquier tipo de Linux sin preocuparnos tampoco por los recursos libres que queden porque la compilación se hace remotamente.
+
+\section{Nuevos triggers}
+\label{sec:nuevos-triggers}
+
+Las otras ofertas FaaS del mercado mantienen integraciones directas con sus servicios para facilitar los casos de uso a los clientes vendiendo servicios de la misma compañía. Nosotros podemos ampliar y cubrir a los dos principales competidores al no vernos obligados a comercializar el producto de la misma marca.
+
+El proceso de llamada a una función está totalmente abstraído del trigger concreto que lo haga
+
+\subsection{Trigger Amazon SNS / Cloud PubSub}
+
+Ambos sistemas implementan una cola de tareas distribuida. Es seguramente con diferencia el trigger que más he visto mencionado y utilizado en ejemplos y casos de éxito. El uso de una cola permite un procesamiento asíncrono y resiliente a errores puntuales, que es una ventaja muy importante para muchos clientes.
+
+En este caso el contexto de la petición sería el ID y contenido del mensaje que hubiera salido de la cola y la respuesta podría no tenerse en cuenta o devolverse en forma de otro mensaje en una cola distinta.
+
+\subsection{Trigger Amazon S3 / Cloud Storage}
+
+Estos servicios proporcionan almacenamiento en la nube. Nos permiten almacenar ficheros online con una disponibilidad más grande que la que pueda ofrecer cualquier disco a coste de la latencia de red en enviarlos o recuperarlos.
+
+Usaría el evento de un nuevo fichero o un fichero cambiado o eliminado para lanzar el trigger de la función usando la información del fichero como contexto. Ignoro el contenido del fichero a propósito porque podría tratarse de grandes contenidos que no nos interesa descargar en un primer momento y que la propia función puede leer sin problemas; podemos configurarlo con alguna opción igualmente.

@@ -1,0 +1,56 @@
+\chapter{Conclusiones}
+\label{chap:conclusiones}
+
+Con este capítulo concluyo el trabajo cerrando y valorando todo lo que se ha hecho y mis opiniones sobre cada aspecto.
+
+\section{Dificultades encontradas}
+
+Una de las grandes dificultades que he tenido en este proyecto es limitar el alcance. Las herramientas que uso como Kubernetes tienen un potencial enorme con todo tipo de funcionalidad para el balanceo de carga, los permisos, las cuotas, los volúmenes, ... Es difícil determinar exactamente qué va a entrar en este prototipo y qué aspectos son similares a otros y pueden posponerse.
+
+Una vez elegidas las características tampoco puedo quedarme en eso, hay que seguir avanzando y encajar las piezas del puzzle manteniendo la extensibilidad como un buen proyecto de código abierto para que otros puedan extenderlo a su necesidad. Prever posibles casos de uso futuros que no existen en la actualidad requiere también de cierto cuidado al diseñar los componentes.
+
+\section{FaaS: Function as a Service}
+
+FaaS es un paradigma incipiente que no ha empezado a ver todavía todo su potencial. Mi experiencia con analistas de datos y programadores de prototipos (móviles, IoT, etc.) me indica que puede ser bastante útil a ciertos sectores donde proporciona una ventaja de velocidad de desarrollo considerable.
+
+Por otra parte para ser proveedor de FaaS hace falta tener una infraestructura potente que sostenga la promesa de autoescalabilidad, sino nos encontramos ante afirmaciones vacías para vender un producto que no llega a la altura que se necesita. Esa infraestructura que antes solo podían dar compañías grandes se ha democratizado un poco con la computación en la nube. Cualquier puede llegar y escalar a miles de servidores a medida que la carga aumente, aunque hace falta administrar esas máquinas correctamente.
+
+Comparando mi planteamiento con el de los grandes proveedores como Cloud Functions, AWS Lambda o Azure Functions veo que todos tienden a forzar el uso de triggers que impliquen más servicios suyos (colas de tareas, almacenamiento distribuido, etc). Personalmente creo que el entorno debe ser más libre similar a una máquina normal; en caso contrario no existe portabilidad alguna entre las soluciones. Con una solución más abierta podríamos elegir donde tener la capacidad de cómputo sin tener que rehacer la aplicación para usar el resto de servicios si nos movemos. Con su proyecto de código abierto guía a la comunidad por el ejemplo y da pié a la innovación.
+
+\section{Contenedores: Kubernetes y Docker}
+
+Cuando llegamos los niveles de escalabilidad necesarios para un FaaS es difícil mantener procedimientos y automatización suficiente para administrar todo el sistema de forma eficiente. Creo que en ese aspecto estas dos tecnologías son claves para conseguir resultados de forma más sencilla.
+
+Primeramente los contenedores de Docker establecen un mecanismo de abstracción que nos permite aislar los recursos de cada función, moverla alrededor del cluster e incluso ejecutar varias instancias en la misma máquina optimizando el uso de los recursos. También nos proporcionan imágenes fabricadas de solo lectura que no se pueden corromper y que podemos reutilizar en todos las instancias. Por último ante cualquier problema o error como falta de memoria siempre tenemos la posibilidad de reiniciar el contenedor y volver a empezar con un estado totalmente limpio desde cero.
+
+Kubernetes forma encima de los contenedores el corazón de esta implementación. Pienso que los SRE de Google han aplicado bastante bien su experiencia con Borg\cite{k8sborg} y eso se refleja en las decisiones de diseño que han tomado como el bucle de control o la agrupación de contenedores en pods. Esas pequeñas decisiones dan forma a todo el sistema construido encima de ellos y permiten a los que desarrollamos aplicaciones expandir todo nuestro potencial sin toparnos con problemas de administración de equipos.
+
+Pero Kubernetes llega aún más alla; con el concepto de \emph{deployment} nos da una implementación completamente probada y funcional de un despliegue de aplicaciones distribuidas. Podemos actualizar versiones progresivamente, hacer un \emph{rollout} para volver hacia atrás, health checking, comprobaciones de cuando un pod está listo para servir, etc. Aquí es donde creo que las otras herramientas se encuentran muy por detrás tecnológicamente hablando porque Google ya lleva 10 años de pruebas internas y conoce qué funciona y qué da lugar a un despliegue inestable en producción.
+
+\section{Comunicación entre componentes: GRPC}
+
+La comunicación entre componentes suele dejarse en un segundo plano en muchos proyectos y es sin duda un aspecto muy importante del trabajo.
+
+Buscando la mayor interoperabilidad posible GRPC nos ofrece múltiples lenguajes en los que poder implementar un cliente que dependa de las mismas especificaciones que el oficial; podemos elegir el que prefiramos y el que nos venga mejor para la lógica de negocio que queremos añadir. Esto favorece además la innovación dando opción a terceros a mejorar la interfaz o los comandos de formas que no son posibles con el cliente oficial dando lugar a un ecosistema más rico de proyectos.
+
+Protobuf pienso que es un buen añadido al framework por la optimización que ofrece minimizando el porcentaje de red y otros recursos que nuestras herramientas gastan del cluster y dejándolos disponibles para las aplicaciones en sí mismas. Adicionalmente mantiene una estructura compatible con versiones anteriores y usa tipos. Se agradece poder mantener un modelo igual en C++ o en Java por ejemplo evitando errores de copias manuales entre ellos. Siempre tenemos esa fuente de verdad común a todo el código generado que se puede consultar, compartir y mejorar de forma común.
+
+Finalmente la autenticación y posible gestión de permisos que nos ofrecen los certificados SSL y la facilidad con la que la librería nos permite usarlos me permiten implementar una solución segura desde el primer momento y no dejarlo para cuando ocurran problemas.
+
+\section{Lenguaje de programación: Go}
+
+La elección del lenguaje creo que es clave en estos componentes tan críticos del sistema que he montado. Go genera un solo binario autocontenido que es bastante fácil de incorporar a contenedores, desplegar en un servidor o distribuirlo para la herramienta del cliente. Es compatible con Windows y Linux con el mismo código lo que nos asegura herramientas en los principales sistemas operativos.
+
+Además de la simplicidad las construcciones concurrentes propias del lenguaje permiten una utilización más eficiente de los recursos y hacen más sencilla la programación. En un momento dado la API debe poder atender peticiones de los diversos clientes, intra-cluster de otros controladores o aplicaciones que necesiten datos, de chequeos de salud de las funciones, etc. Todo eso debe procesarse con la menor latencia posible y las múltiples gorutinas invitan a una arquitectura del código más productiva sin el gasto de recursos asociado a hebras individuales.
+
+Otro de los aspectos más ignorados en un prototipo como el mío es el tratamiento de errores. Aquí Go tiene especial incidencia obligándote a decidir que hacer con cada error en cada caso. Tienes que tomar la decisión de pasarlo a una función superior retornándolo o solucionar el problema creado in-situ. En cualquier caso podemos asegurar a diferencia de otros lenguajes que ninguna excepción imprevista puede de repente colapsar el servidor a excepción de ciertos problemas más graves como la falta de memoria; todos los errores posibles se tratan o se registran para solucionarlos.
+
+\section{Proyecto en general}
+
+El objetivo original del proyecto pretendía sentar las bases de un proyecto de código abierto que permita administrar una plataforma PaaS. Pienso que en este sentido he implementado correctamente la plataforma para que sea lo suficientemente extensible para añadir nuevos triggers y nuevos lenguajes de programación soportados con facilidad y enseñar las posibilidades de este diseño y este producto.
+
+He analizado en profundidad cada tecnología llegando a todos los niveles de abstracción necesarios para entender cada capa que necesite el sistema.
+
+El algoritmo de autoescalado necesita de mejores datos y de un análisis más en profundidad de una carga real para ser realmente eficiente en su trabajo pero el sistema de métricas que necesita está ya funcionando correctamente, y las mediciones forman el pilar de cualquier algoritmo que terminemos habilitando.
+
+Para terminar creo que la dualidad de un panel de control web y una herramienta de gestión por línea de comandos forman un kit básico que cualquier implementación moderna de un FaaS debe llevar para ser útil al sector de personas al que se dirige. Pienso que \emph{fnctl}, nuestro CLI, tiene mecanismos suficientes para actualizar los comandos jerárquicamente en forma de subcomandos permitiendo añadir nuevas funcionalidades e innovar continuamente sin formar una lista enorme e intratable de documentación.

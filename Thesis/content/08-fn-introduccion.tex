@@ -1,0 +1,50 @@
+\chapter{Fn: introducción}
+\label{chap:fn-introduccion}
+
+En este capítulo analizaré en profundidad las necesidades y casos de uso que voy a implementar en mi sistema. Servirá como guía del diseño a seguir y da una visión general de las características que es capaz de gestionar la aplicación.
+
+\section{Análisis de requisitos}
+\subsection{Requisitos funcionales}
+
+\begin{enumerate}
+    \item Administración de funciones
+        \begin{enumerate}
+            \item Listar funciones que existen en el sistema por línea de comandos.
+            \item Listar funciones que existen en el sistema por el panel de control web.
+            \item Desplegar una nueva función usando la herramienta.
+            \item Ejecutar una llamada a la función desde la interfaz web.
+            \item Eliminar funciones por línea de comandos.
+        \end{enumerate}
+    \item Monitorización de funciones
+        \begin{enumerate}
+            \item Acceder al número de instancias abiertas de cada función a lo largo del tiempo.
+        \end{enumerate}
+\end{enumerate}
+
+\subsection{Requisitos no funcionales}
+\begin{enumerate}
+    \item Autoescalar el número de instancias que sirven una función cuando la carga en espera en la cola supere el tiempo de iniciar una nueva.
+    \item Cerrar instancias a medida que la carga se reduzca y sobre capacidad de procesamiento suficiente.
+    \item Recibir un contexto preparado para cada lenguaje que soportemos con datos y métodos útiles al ejecutar una función.
+    \item Al eliminar una función del sistema deben cerrarse inmediatamente todas las instancias que tengamos en ejecución.
+\end{enumerate}
+
+\section{Casos de uso}
+
+\subsection{Panel de control web}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{../images/casos-uso/web.png}
+    \caption{Casos de uso para el panel de control web}
+    \label{fig:cu-web}
+\end{figure}
+
+\subsection{Herramienta de línea de comandos \emph{fnctl}}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{../images/casos-uso/fnctl.png}
+    \caption{Casos de uso para la herramienta de línea de comandos \emph{fnctl}}
+    \label{fig:cu-fnctl}
+\end{figure}
