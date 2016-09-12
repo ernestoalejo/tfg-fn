@@ -15,6 +15,7 @@ cp $GOPATH/bin/fnapi /tmp/build-fnapi
 cp docker/fnapi/Dockerfile /tmp/build-fnapi
 cp -R templates /tmp/build-fnapi
 cp -R static /tmp/build-fnapi
+cp -R certs /tmp/build-fnapi
 
 echo "--- build container"
 docker build -t $REGISTRY/fnapi:$VERSION /tmp/build-fnapi

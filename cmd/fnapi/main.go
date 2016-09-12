@@ -1,6 +1,9 @@
 package main
 
 import (
+	"crypto/tls"
+	"crypto/x509"
+	"io/ioutil"
 	"net"
 	"net/http"
 	"os"
@@ -11,6 +14,7 @@ import (
 	"golang.org/x/net/trace"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/credentials"
 	r "gopkg.in/dancannon/gorethink.v2"
 
 	"github.com/ernestoalejo/tfg-fn/pkg/api"
@@ -35,12 +39,36 @@ func main() {
 		logrus.WithFields(logrus.Fields{"err": err}).Fatal("failed to connect to RethinkDB")
 	}
 
+	tlsCert, err := ioutil.ReadFile("certs/server.pem")
+	if err != nil {
+		logrus.WithFields(logrus.Fields{"error": err}).Fatal("failed to load certificate")
+	}
+	tlsKey, err := ioutil.ReadFile("certs/server-key.pem")
+	if err != nil {
+		logrus.WithFields(logrus.Fields{"error": err}).Fatal("failed to load certificate")
+	}
+	tlsCA, err := ioutil.ReadFile("certs/ca.pem")
+	if err != nil {
+		logrus.WithFields(logrus.Fields{"error": err}).Fatal("failed to load certificate")
+	}
+	cert, err := tls.X509KeyPair(tlsCert, tlsKey)
+	if err != nil {
+		logrus.WithFields(logrus.Fields{"error": err}).Fatal("failed to load certificate")
+	}
+	caCertPool := x509.NewCertPool()
+	caCertPool.AppendCertsFromPEM(tlsCA)
+	creds := credentials.NewTLS(&tls.Config{
+		Certificates: []tls.Certificate{cert},
+		ClientCAs:    caCertPool,
+		ClientAuth:   tls.RequireAndVerifyClientCert,
+	})
+
 	listener, err := net.Listen("tcp", ":50050")
 	if err != nil {
 		logrus.WithFields(logrus.Fields{"err": err}).Fatal("failed to listen")
 	}
 
-	s := grpc.NewServer(grpc.UnaryInterceptor(interceptor))
+	s := grpc.NewServer(grpc.UnaryInterceptor(interceptor), grpc.Creds(creds))
 
 	trace.AuthRequest = func(r *http.Request) (bool, bool) { return true, true }
 	go func() {
@@ -49,7 +77,8 @@ func main() {
 		web.Register(r, db)
 
 		logrus.Info("server listening in :8080 to HTTP connections")
-		http.ListenAndServe(":8080", r)
+		http.Handle("/", r)
+		http.ListenAndServe(":8080", nil)
 	}()
 
 	go fnctx.BgProcessor(db)

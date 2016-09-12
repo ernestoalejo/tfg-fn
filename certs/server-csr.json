@@ -1,0 +1,19 @@
+{
+  "CN": "tfg-fn",
+  "hosts": [
+    "192.168.99.100"
+  ],
+  "key": {
+    "algo": "rsa",
+    "size": 2048
+  },
+  "names": [
+    {
+      "C": "ES",
+      "L": "Granada",
+      "O": "Ernesto Alejo",
+      "OU": "tfg-fn",
+      "ST": "Granada"
+    }
+  ]
+}
